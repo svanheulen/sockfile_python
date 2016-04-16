@@ -29,7 +29,7 @@ def send_cias(host, cia_paths):
         print('error: Unable to connect to FBI.')
         return
     try:
-        conn.sendall(struct.pack('!i', len(cia_paths)))
+        conn.sendall(struct.pack('!I', len(cia_paths)))
     except:
         print('error: Unable to send CIA count to FBI.')
         conn.close()
@@ -37,26 +37,30 @@ def send_cias(host, cia_paths):
     print('Waiting for confirmation in FBI...')
     for i in range(len(cia_paths)):
         try:
-            cia_stat = os.stat(cia_paths[i])
-            cia = open(cia_paths[i], 'rb')
-        except FileNotFoundError:
-            print('({}/{}) Skipping (file does not exist): {}'.format(i + 1, len(cia_paths), cia_paths[i]))
-            continue
-        except PermissionError:
-            print('({}/{}) Skipping (insufficient permissions): {}'.format(i + 1, len(cia_paths), cia_paths[i]))
-            continue
-        ack = conn.recv(1)
+            ack = conn.recv(1)
+        except socket.error:
+            print('error: Unable to recieve acknowledge from FBI.')
+            break
         if ack[0] == 0:
             print('error: Install was cancelled by FBI.')
-            cia.close()
             break
-        print('({}/{}) Sending: {}'.format(i + 1, len(cia_paths), cia_paths[i]))
         try:
-            conn.sendall(struct.pack('!q', cia_stat.st_size))
+            cia_size = os.stat(cia_paths[i]).st_size
+            cia = open(cia_paths[i], 'rb')
+        except (IOError, OSError):
+            cia_size = 0
+            print('({}/{}) Skipping (unable to read file): {}'.format(i + 1, len(cia_paths), cia_paths[i]))
+        else:
+            print('({}/{}) Sending: {}'.format(i + 1, len(cia_paths), cia_paths[i]))
+        try:
+            conn.sendall(struct.pack('!Q', cia_size))
         except socket.error:
             print('error: Unable to send CIA size to FBI.')
-            cia.close()
+            if cia_size != 0:
+                cia.close()
             break
+        if cia_size == 0:
+            continue
         try:
             cia_chunk = cia.read(1024 * 128)
             while len(cia_chunk) != 0:
