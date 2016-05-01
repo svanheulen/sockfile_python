@@ -1,3 +1,16 @@
-Python script for network installing CIA files with FBI.
+Python scripts for network installing CIA files with FBI.
 Works with Python 2 and 3.
+
+sockfile.py:
+    Command line only. Works just like the official Java sockfile. You can use
+    the "-h" option to get help on the command line parameters.
+
+qr_installer.pyw:
+    This requires the "pyqrcode" module to be installed, which you can install
+    by opening the console/terminal and typing:
+        pip install --user pyqrcode
+    In Windows you can drag-and-drop a CIA file onto the script to display the
+    QR code. On Linux or Mac you can also display the QR code in the terminal by
+    using the "-t" argument. You can use the "-h" argument to get help on the
+    command line parameters.
 
