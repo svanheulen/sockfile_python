@@ -85,9 +85,9 @@ def qrcode_to_xbm(code, quiet_zone=4, zoom=5):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-t', action='store_true', help='')
-    parser.add_argument('cia', help='')
+    parser = argparse.ArgumentParser(description='Serve a CIA file to FBI via a QR code.')
+    parser.add_argument('-t', action='store_true', help='Display QR code in terminal instead of using a GUI.')
+    parser.add_argument('cia', help='CIA file to be serverd.')
     args = parser.parse_args()
     server = SingleFileServer(('', 8080), SingleFileRequestHandler, args.cia)
     server_thread = threading.Thread(target=server.serve_forever)
