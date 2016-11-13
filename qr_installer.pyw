@@ -65,25 +65,6 @@ class SingleFileRequestHandler(BaseHTTPRequestHandler):
         f.close()
 
 
-def qrcode_to_xbm(code, quiet_zone=4, zoom=5):
-    pixel_width = (len(code[0]) + quiet_zone * 2) * zoom
-    xbm = '#define im_width {}\n#define im_height {}\nstatic char im_bits[] = {{\n'.format(pixel_width, pixel_width)
-    byte_width = int(math.ceil(pixel_width / 8.0))
-    xbm += ('0x00,' * byte_width + '\n') * quiet_zone * zoom
-    for row in code:
-        row_bits = '0' * quiet_zone * zoom
-        for b in row:
-            row_bits += str(b) * zoom
-        row_bits += '0' * quiet_zone * zoom
-        row_bytes = ''
-        for b in range(byte_width):
-            row_bytes += '0x{:02x},'.format(int(row_bits[:8][::-1], 2))
-            row_bits = row_bits[8:]
-        row_bytes += '\n'
-        xbm += row_bytes * zoom
-    return xbm + ('0x00,' * byte_width + '\n') * quiet_zone * zoom + '};'
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Serve a CIA file to FBI via a QR code.')
     parser.add_argument('-t', action='store_true', help='Display QR code in terminal instead of using a GUI.')
@@ -92,7 +73,7 @@ if __name__ == "__main__":
     server = SingleFileServer(('', 8080), SingleFileRequestHandler, args.cia)
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.start()
-    qr = pyqrcode.create('HTTP://{}:{}/installer.cia'.format(socket.gethostbyname(server.server_name), server.server_port))
+    qr = pyqrcode.create('http://{}:{}/installer.cia'.format(socket.gethostbyname(server.server_name), server.server_port))
     if args.t:
         print(qr.terminal())
         print('Serving file: {}'.format(os.path.abspath(args.cia)))
@@ -105,7 +86,7 @@ if __name__ == "__main__":
         root.title('FBI QR Code Install')
         main_frame = Frame(root)
         main_frame.pack()
-        qr_bitmap = BitmapImage(data=qrcode_to_xbm(qr.code), foreground='black', background='white')
+        qr_bitmap = BitmapImage(data=qr.xbm(scale=8), foreground='black', background='white')
         qr_label = Label(main_frame, image=qr_bitmap)
         qr_label.pack()
         msg_label = Label(main_frame, text='Serving file: {}'.format(os.path.abspath(args.cia)))
