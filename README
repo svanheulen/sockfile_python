@@ -9,8 +9,9 @@ qr_installer.pyw:
     This requires the "pyqrcode" module to be installed, which you can install
     by opening the console/terminal and typing:
         pip install --user pyqrcode
-    In Windows you can drag-and-drop a CIA file onto the script to display the
-    QR code. On Linux or Mac you can also display the QR code in the terminal by
-    using the "-t" argument. You can use the "-h" argument to get help on the
-    command line parameters.
+    In Windows you can drag-and-drop a *single* CIA/TIK file or a *single*
+    folder containing CIA/TIK files onto the script to display the QR code. On
+    Linux or Mac you can also display the QR code in the terminal by using the
+    "-t" argument. You can use the "-h" argument to get help on the command
+    line parameters.
 
