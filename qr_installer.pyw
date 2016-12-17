@@ -23,9 +23,12 @@ import threading
 try:
     from http.server import SimpleHTTPRequestHandler, HTTPServer
     from tkinter import Tk, Frame, Label, BitmapImage
+    from urllib.parse import quote
 except ImportError:
-    from BaseHTTPServer import SimpleHTTPRequestHandler, HTTPServer
+    from BaseHTTPServer import HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
     from Tkinter import Tk, Frame, Label, BitmapImage
+    from urllib import quote
 import pyqrcode
 
 
@@ -50,7 +53,7 @@ def main(input_path, ip_port=8080, terminal_display=False):
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.start()
     ip_addr = socket.gethostbyname(server.server_name)
-    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, f) for f in file_list])
+    qr_data = '\n'.join([quote('{}:{}/{}'.format(ip_addr, ip_port, f)) for f in file_list])
     qr_code = pyqrcode.create(qr_data)
     if terminal_display:
         print(qr_code.terminal())
