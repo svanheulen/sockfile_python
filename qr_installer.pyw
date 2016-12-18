@@ -37,24 +37,28 @@ def main(input_path, ip_port=8080, terminal_display=False):
         print('error: input path does not exist: {}'.format(input_path))
         return
     file_list = []
-    if os.path.isfile(input_path) and (input_path.lower().endswith('.cia') or input_path.lower().endswith('.tik')):
+    if os.path.isfile(input_path) and input_path.lower().endswith(('.cia', '.tik')):
         file_list.append(os.path.basename(input_path))
         input_path = os.path.dirname(input_path)
     elif os.path.isdir(input_path):
-        for entry in os.listdir(input_path):
-            if entry.lower().endswith('.cia') or entry.lower().endswith('.tik'):
-                file_list.append(entry)
+        for dirpath, dirnames, filenames in os.walk(input_path):
+            dirpath = dirpath.replace(input_path, '', 1).lstrip(os.sep)
+            file_list.extend([os.path.join(dirpath, f) for f in filenames if f.lower().endswith(('.cia', '.tik'))])
     if len(file_list) == 0:
         print('error: no CIA/TIK files found at input path: {}'.format(input_path))
         return
     input_path = os.path.abspath(input_path)
     os.chdir(input_path)
     server = HTTPServer(('', ip_port), SimpleHTTPRequestHandler)
+    ip_addr = socket.gethostbyname(server.server_name)
+    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, quote(f.replace(os.sep, '/'))) for f in file_list])
+    try:
+        qr_code = pyqrcode.create(qr_data)
+    except ValueError:
+        print('error: too many files to fit in the QR code')
+        return
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.start()
-    ip_addr = socket.gethostbyname(server.server_name)
-    qr_data = '\n'.join([quote('{}:{}/{}'.format(ip_addr, ip_port, f)) for f in file_list])
-    qr_code = pyqrcode.create(qr_data)
     if terminal_display:
         print(qr_code.terminal())
         print('Serving from path: {}'.format(input_path))
