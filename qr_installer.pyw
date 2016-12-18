@@ -32,6 +32,30 @@ except ImportError:
 import pyqrcode
 
 
+class LimitedHTTPServer(HTTPServer):
+    def __init__(self, server_address, RequestHandlerClass, file_list):
+        self._file_list = file_list
+        HTTPServer.__init__(self, server_address, RequestHandlerClass)
+
+    def finish_request(self, request, client_address):
+        self.RequestHandlerClass(request, client_address, self, self._file_list)
+
+
+class LimitedHTTPRequestHandler(SimpleHTTPRequestHandler):
+    def __init__(self, request, client_address, server, file_list):
+        self._file_list = file_list
+        SimpleHTTPRequestHandler.__init__(self, request, client_address, server)
+
+    def log_message(self, format, *args):
+        pass
+
+    def do_GET(self):
+        if self.path.lstrip('/').replace('/', os.sep) not in self._file_list:
+            self.send_error(404, "File not found")
+        else:
+            SimpleHTTPRequestHandler.do_GET(self)
+
+
 def main(input_path, ip_port=8080, terminal_display=False):
     if not os.path.exists(input_path):
         print('error: input path does not exist: {}'.format(input_path))
@@ -49,7 +73,7 @@ def main(input_path, ip_port=8080, terminal_display=False):
         return
     input_path = os.path.abspath(input_path)
     os.chdir(input_path)
-    server = HTTPServer(('', ip_port), SimpleHTTPRequestHandler)
+    server = LimitedHTTPServer(('', ip_port), LimitedHTTPRequestHandler, file_list)
     ip_addr = socket.gethostbyname(server.server_name)
     qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, quote(f.replace(os.sep, '/'))) for f in file_list])
     try:
@@ -64,9 +88,9 @@ def main(input_path, ip_port=8080, terminal_display=False):
         print('Serving from path: {}'.format(input_path))
         print('Serving files:\n    {}'.format('\n    '.join(file_list)))
         try:
-            raw_input('Press the Enter key to quit.\n')
+            raw_input('Press the Enter key to quit.')
         except NameError:
-            input('Press the Enter key to quit.\n')
+            input('Press the Enter key to quit.')
     else:
         root = Tk()
         root.title('FBI QR Code Install')
