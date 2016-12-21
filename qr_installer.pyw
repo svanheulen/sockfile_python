@@ -56,34 +56,18 @@ class LimitedHTTPRequestHandler(SimpleHTTPRequestHandler):
             SimpleHTTPRequestHandler.do_GET(self)
 
 
-def main(input_path, ip_port=8080, terminal_display=False):
-    if not os.path.exists(input_path):
-        print('error: input path does not exist: {}'.format(input_path))
-        return
-    file_list = []
-    if os.path.isfile(input_path) and input_path.lower().endswith(('.cia', '.tik')):
-        file_list.append(os.path.basename(input_path))
-        input_path = os.path.dirname(input_path)
-    elif os.path.isdir(input_path):
-        for dirpath, dirnames, filenames in os.walk(input_path):
-            dirpath = dirpath.replace(input_path, '', 1).lstrip(os.sep)
-            file_list.extend([os.path.join(dirpath, f) for f in filenames if f.lower().endswith(('.cia', '.tik'))])
-    if len(file_list) == 0:
-        print('error: no CIA/TIK files found at input path: {}'.format(input_path))
-        return
-    input_path = os.path.abspath(input_path)
-    os.chdir(input_path)
-    server = LimitedHTTPServer(('', ip_port), LimitedHTTPRequestHandler, file_list)
-    ip_addr = socket.gethostbyname(server.server_name)
-    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, quote(f.replace(os.sep, '/'))) for f in file_list])
-    try:
-        qr_code = pyqrcode.create(qr_data)
-    except ValueError:
-        print('error: too many files to fit in the QR code')
-        return
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.start()
-    if terminal_display:
+def display_error(message, cli=False):
+    if cli:
+        print('error:', message)
+    else:
+        root = Tk()
+        root.title('Error')
+        message_label = Label(root, text=message)
+        message_label.pack()
+        root.mainloop()
+
+def display_qr(qr_code, input_path, file_list, cli=False):
+    if cli:
         print(qr_code.terminal())
         print('Serving from path: {}'.format(input_path))
         print('Serving files:\n    {}'.format('\n    '.join(file_list)))
@@ -104,13 +88,42 @@ def main(input_path, ip_port=8080, terminal_display=False):
         files_label = Label(main_frame, text='Serving files:\n{}'.format('\n'.join(file_list)))
         files_label.pack()
         root.mainloop()
+
+def main(input_path, ip_port=8080, cli=False):
+    if not os.path.exists(input_path):
+        display_error('The input path does not exist: {}'.format(input_path), cli)
+        return
+    file_list = []
+    if os.path.isfile(input_path) and input_path.lower().endswith(('.cia', '.tik')):
+        file_list.append(os.path.basename(input_path))
+        input_path = os.path.dirname(input_path)
+    elif os.path.isdir(input_path):
+        for dirpath, dirnames, filenames in os.walk(input_path):
+            dirpath = dirpath.replace(input_path, '', 1).lstrip(os.sep)
+            file_list.extend([os.path.join(dirpath, f) for f in filenames if f.lower().endswith(('.cia', '.tik'))])
+    if len(file_list) == 0:
+        display_error('No CIA/TIK files were found at the input path: {}'.format(input_path), cli)
+        return
+    input_path = os.path.abspath(input_path)
+    os.chdir(input_path)
+    server = LimitedHTTPServer(('', ip_port), LimitedHTTPRequestHandler, file_list)
+    ip_addr = socket.gethostbyname(server.server_name)
+    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, quote(f.replace(os.sep, '/'))) for f in file_list])
+    try:
+        qr_code = pyqrcode.create(qr_data)
+    except ValueError:
+        display_error('The combined file paths are too large to fit in a QR code.', cli)
+        return
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.start()
+    display_qr(qr_code, input_path, file_list, cli)
     server.shutdown()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Serve CIA/TIK files to FBI via a QR code.')
     parser.add_argument('-p', '--port', default=8080, type=int, help='The port to listen on.')
-    parser.add_argument('-t', action='store_true', help='Display QR code in terminal instead of using a GUI.')
-    parser.add_argument('input', help='A folder conatianing CIA/TIK files or a single CIA/TIK file.')
+    parser.add_argument('-t', action='store_true', help='Display QR code in the terminal instead of using a GUI.')
+    parser.add_argument('input', help='A folder containing CIA/TIK files or a single CIA/TIK file.')
     args = parser.parse_args()
     main(args.input, args.port, args.t)
 
