@@ -50,7 +50,10 @@ class LimitedHTTPRequestHandler(SimpleHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path.lstrip('/').replace('/', os.sep) not in self._file_list:
+        try:
+            i = int(self.path.lstrip('/'))
+            self.path = '/{}'.format(self._file_list[i].replace(os.sep, '/'))
+        except (ValueError, IndexError):
             self.send_error(404, "File not found")
         else:
             SimpleHTTPRequestHandler.do_GET(self)
@@ -108,7 +111,7 @@ def main(input_path, ip_port=8080, cli=False):
     os.chdir(input_path)
     server = LimitedHTTPServer(('', ip_port), LimitedHTTPRequestHandler, file_list)
     ip_addr = socket.gethostbyname(server.server_name)
-    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, quote(f.replace(os.sep, '/'))) for f in file_list])
+    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, i) for i in range(len(file_list))])
     try:
         qr_code = pyqrcode.create(qr_data)
     except ValueError:
