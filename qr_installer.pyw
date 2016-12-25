@@ -19,6 +19,7 @@ from __future__ import print_function
 import argparse
 import os
 import socket
+import struct
 import threading
 try:
     from http.server import SimpleHTTPRequestHandler, HTTPServer
@@ -29,7 +30,7 @@ except ImportError:
     from SimpleHTTPServer import SimpleHTTPRequestHandler
     from Tkinter import Tk, Frame, Label, BitmapImage
     from urllib import quote
-import pyqrcode
+    input = raw_input
 
 
 class LimitedHTTPServer(HTTPServer):
@@ -75,9 +76,9 @@ def display_qr(qr_code, input_path, file_list, cli=False):
         print('Serving from path: {}'.format(input_path))
         print('Serving files:\n    {}'.format('\n    '.join(file_list)))
         try:
-            raw_input('Press the Enter key to quit.')
-        except NameError:
             input('Press the Enter key to quit.')
+        except:
+            return
     else:
         root = Tk()
         root.title('FBI QR Code Install')
@@ -92,7 +93,30 @@ def display_qr(qr_code, input_path, file_list, cli=False):
         files_label.pack()
         root.mainloop()
 
-def main(input_path, ip_port=8080, cli=False):
+def send_urls(urls, remote_ip_addr, input_path, file_list):
+    print('Serving from path: {}'.format(input_path))
+    print('Serving files:\n    {}'.format('\n    '.join(file_list)))
+    print('Sending file list ...')
+    try:
+        conn = socket.create_connection((remote_ip_addr, 5000))
+    except:
+        print('error: Unable to connect.')
+        return
+    try:
+        urls = urls.encode()
+        conn.sendall(struct.pack('!I', len(urls)) + urls)
+    except:
+        print('error: Unable to send file list.')
+        conn.close()
+        return
+    print('Waiting for install to complete ...')
+    try:
+        ack = conn.recv(1)
+    except:
+        print('error: Unable to recieve acknowledge.')
+        return
+
+def main(input_path, ip_port=8080, cli=False, remote_ip_addr=None):
     if not os.path.exists(input_path):
         display_error('The input path does not exist: {}'.format(input_path), cli)
         return
@@ -111,22 +135,32 @@ def main(input_path, ip_port=8080, cli=False):
     os.chdir(input_path)
     server = LimitedHTTPServer(('', ip_port), LimitedHTTPRequestHandler, file_list)
     ip_addr = socket.gethostbyname(server.server_name)
-    qr_data = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, i) for i in range(len(file_list))])
-    try:
-        qr_code = pyqrcode.create(qr_data)
-    except ValueError:
-        display_error('The combined file paths are too large to fit in a QR code.', cli)
-        return
+    urls = '\n'.join(['{}:{}/{}'.format(ip_addr, ip_port, i) for i in range(len(file_list))])
+    qr_code = None
+    if remote_ip_addr is None:
+        try:
+            import pyqrcode
+            qr_code = pyqrcode.create(urls)
+        except ImportError:
+            display_error('The PyQRCode module is required to generate a QR code.', cli)
+            return
+        except ValueError:
+            display_error('The combined file paths are too large to fit in a QR code.', cli)
+            return
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.start()
-    display_qr(qr_code, input_path, file_list, cli)
+    if remote_ip_addr is None:
+        display_qr(qr_code, input_path, file_list, cli)
+    else:
+        send_urls(urls, remote_ip_addr, input_path, file_list)
     server.shutdown()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Serve CIA/TIK files to FBI via a QR code.')
     parser.add_argument('-p', '--port', default=8080, type=int, help='The port to listen on.')
     parser.add_argument('-t', action='store_true', help='Display QR code in the terminal instead of using a GUI.')
+    parser.add_argument('--send', metavar='HOST', help='Send the file list to this IP instead of displaying a QR code.')
     parser.add_argument('input', help='A folder containing CIA/TIK files or a single CIA/TIK file.')
     args = parser.parse_args()
-    main(args.input, args.port, args.t)
+    main(args.input, args.port, args.t, args.send)
 
