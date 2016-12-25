@@ -22,7 +22,7 @@ import socket
 import struct
 
 
-def send_cias(host, cia_paths):
+def send_files(host, file_list):
     print('Connecting to FBI...')
     try:
         conn = socket.create_connection((host, 5000))
@@ -30,13 +30,13 @@ def send_cias(host, cia_paths):
         print('error: Unable to connect to FBI.')
         return
     try:
-        conn.sendall(struct.pack('!I', len(cia_paths)))
+        conn.sendall(struct.pack('!I', len(file_list)))
     except:
-        print('error: Unable to send CIA count to FBI.')
+        print('error: Unable to send file count to FBI.')
         conn.close()
         return
     print('Waiting for confirmation in FBI...')
-    for i in range(len(cia_paths)):
+    for i in range(len(file_list)):
         try:
             ack = conn.recv(1)
         except socket.error:
@@ -46,38 +46,41 @@ def send_cias(host, cia_paths):
             print('error: Install was cancelled by FBI.')
             break
         try:
-            cia_size = os.stat(cia_paths[i]).st_size
-            cia = open(cia_paths[i], 'rb')
+            file_ = open(file_list[i], 'rb')
+            file_.seek(0, os.SEEK_END)
+            file_size = file_.tell()
+            file_.seek(0)
         except (IOError, OSError):
-            cia_size = 0
-            print('({}/{}) Skipping (unable to read file): {}'.format(i + 1, len(cia_paths), cia_paths[i]))
+            file_ = None
+            file_size = 0
+            print('({}/{}) Skipping (unable to read file): {}'.format(i + 1, len(file_list), file_list[i]))
         else:
-            print('({}/{}) Sending: {}'.format(i + 1, len(cia_paths), cia_paths[i]))
+            print('({}/{}) Sending: {}'.format(i + 1, len(file_list), file_list[i]))
         try:
-            conn.sendall(struct.pack('!Q', cia_size))
+            conn.sendall(struct.pack('!Q', file_size))
         except socket.error:
-            print('error: Unable to send CIA size to FBI.')
-            if cia_size != 0:
-                cia.close()
+            print('error: Unable to send file size to FBI.')
+            if file_ is not None:
+                file_.close()
             break
-        if cia_size == 0:
+        if file_ is None:
             continue
         try:
-            cia_chunk = cia.read(1024 * 128)
-            while len(cia_chunk) != 0:
-                conn.sendall(cia_chunk)
-                cia_chunk = cia.read(1024 * 128)
-            cia.close()
+            file_chunk = file_.read(1024 * 128)
+            while len(file_chunk) != 0:
+                conn.sendall(file_chunk)
+                file_chunk = file_.read(1024 * 128)
+            file_.close()
         except socket.error:
-            print('error: Unable to send CIA data to FBI.')
-            cia.close()
+            print('error: Unable to send file to FBI.')
+            file_.close()
             break
     conn.close()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Send CIA files to FBI.')
+    parser = argparse.ArgumentParser(description='Send CIA/TIK files to FBI.')
     parser.add_argument('host', help='IP address or host name of the 3DS running FBI.')
-    parser.add_argument('cia', nargs='+', help='CIA file to be sent to FBI.')
+    parser.add_argument('input', nargs='+', help='A CIA/TIK file to be sent to FBI.')
     args = parser.parse_args()
-    send_cias(args.host, args.cia)
+    send_files(args.host, args.input)
 
