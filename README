@@ -1,17 +1,24 @@
-Python scripts for network installing CIA files with FBI.
-Works with Python 2 and 3.
+Python scripts for network installing CIA/TIK files with FBI. Everything should
+work in both Python 2 and 3. You can use the "-h" argument with any of these
+scripts to get information about the command line parameters.
+
+net_installer.pyw:
+    This script implements the FBI 2.4.5 TCP/HTTP and FBI 2.1.0 QR/HTTP network
+    install protocols. The PyQRCode module is required if you want to use the
+    QR code installer, which can be installed with this command:
+        pip install --user pyqrcode
+    You can drag-and-drop a CIA/TIK file or a folder containing CIA/TIK files
+    onto the script to display the QR code. To install without a QR code you
+    will need to use the "--send" argument from the command line.
 
 sockfile.py:
-    Command line only. Works just like the official Java sockfile. You can use
-    the "-h" option to get help on the command line parameters.
+    This script implements the FBI 2.x TCP network install protocol. It can be
+    used to install multiple CIA/TIK files over the network. Support for TIK
+    installation was added in FBI 2.1.0. In FBI 2.4.3 this protocol was
+    removed.
 
-qr_installer.pyw:
-    This requires the "pyqrcode" module to be installed, which you can install
-    by opening the console/terminal and typing:
-        pip install --user pyqrcode
-    In Windows you can drag-and-drop a *single* CIA/TIK file or a *single*
-    folder containing CIA/TIK files onto the script to display the QR code. On
-    Linux or Mac you can also display the QR code in the terminal by using the
-    "-t" argument. You can use the "-h" argument to get help on the command
-    line parameters.
+sockfile_old.py:
+    This script implements the FBI 1.x TCP network install protocol. It can be
+    used to installing a single CIA file over the network. In FBI 2.0.0 this
+    protocol was removed.
 
